@@ -1,0 +1,158 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student profile information.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "fullName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "fullName", "createdAt"]
+    },
+    "Registration": {
+      "title": "Registration",
+      "description": "Student admission application details.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "parentName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "class": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "studentName", "parentName", "email", "phone", "class", "status", "submittedAt"]
+    },
+    "GalleryImage": {
+      "title": "Gallery Image",
+      "description": "Images displayed in the school gallery.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url", "title", "category", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Contact messages sent by visitors.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["fullName", "email", "subject", "message", "createdAt"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global site settings and configurations.",
+      "type": "object",
+      "properties": {
+        "heroImages": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prospectusUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Topper": {
+      "title": "Topper",
+      "description": "Student academic achievers and toppers.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "class": { "type": "string" },
+        "percentage": { "type": "string" },
+        "image": { "type": "string" },
+        "rank": { "type": "number" },
+        "order": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "class", "percentage", "image", "order"]
+    },
+    "FacultyMember": {
+      "title": "Faculty Member",
+      "description": "Information about school faculty and leadership.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "qualification": { "type": "string" },
+        "subject": { "type": "string" },
+        "image": { "type": "string" },
+        "bio": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["leadership", "teacher"] },
+        "order": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "role", "image", "type", "order"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Public school notices and announcements.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "date", "priority", "isActive", "createdAt"]
+    }
+  },
+  "firestore": {
+    "notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Stores public school notices and announcements."
+    },
+    "toppers/{topperId}": {
+      "schema": "Topper",
+      "description": "Stores information about school toppers and achievers."
+    },
+    "faculty/{memberId}": {
+      "schema": "FacultyMember",
+      "description": "Stores information about faculty and leadership members."
+    },
+    "settings/site": {
+      "schema": "Settings",
+      "description": "Stores site-wide configurations like hero images."
+    },
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profile and authentication metadata."
+    },
+    "registrations/{registrationId}": {
+      "schema": "Registration",
+      "description": "Stores admission applications submitted by students."
+    },
+    "gallery/{imageId}": {
+      "schema": "GalleryImage",
+      "description": "Stores images for the school gallery."
+    },
+    "messages/{messageId}": {
+      "schema": "Message",
+      "description": "Stores contact messages from visitors."
+    },
+    "stats/visitors": {
+      "schema": "object",
+      "description": "Stores global website statistics like visitor count."
+    }
+  }
+}

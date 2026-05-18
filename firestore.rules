@@ -1,0 +1,200 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definitions
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    // Auth tokens contain email for security
+    function isVerifiedAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email in [
+               'manishrana55589@gmail.com', 
+               'mmss741852@gmail.com', 
+               'stmerry777@gmail.com'
+             ];
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Pillar 2: Validation Blueprints
+    
+    function isValidGalleryImage(data) {
+      return data.keys().hasAll(['url', 'title', 'category', 'createdAt']) &&
+             data.keys().size() == 4 &&
+             data.url is string && data.url.size() <= 1048576 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidGalleryUpdate(data) {
+      return data.url is string && data.url.size() <= 1048576 &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidRegistration(data) {
+      return data.keys().hasAll(['studentId', 'studentName', 'parentName', 'email', 'phone', 'class', 'status', 'submittedAt', 'message']) &&
+             data.keys().size() == 9 &&
+             data.studentId == request.auth.uid &&
+             data.studentName is string && data.studentName.size() <= 100 &&
+             data.parentName is string && data.parentName.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.phone is string && data.phone.size() <= 20 &&
+             data.class is string && data.class.size() <= 50 &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.status == 'pending' &&
+             data.submittedAt == request.time;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['fullName', 'email', 'subject', 'message', 'read', 'createdAt']) &&
+             data.keys().size() == 6 &&
+             data.fullName is string && data.fullName.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.subject is string && data.subject.size() <= 200 &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.read == false &&
+             data.createdAt == request.time;
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['heroImages', 'updatedAt']) &&
+             (data.keys().size() == 2 || (data.keys().size() == 3 && 'prospectusUrl' in data)) &&
+             data.heroImages is list &&
+             (!('prospectusUrl' in data) || (data.prospectusUrl is string && data.prospectusUrl.size() <= 2000)) &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidFacultyMember(data) {
+      return data.keys().hasAll(['name', 'role', 'image', 'type', 'order']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.role is string && data.role.size() <= 100 &&
+             (!('qualification' in data) || (data.qualification is string && data.qualification.size() <= 200)) &&
+             data.image is string && data.image.size() <= 1048576 &&
+             (!('message' in data) || (data.message is string && data.message.size() <= 5000)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
+             data.type in ['leadership', 'teacher'] &&
+             data.order is number;
+    }
+
+    function isValidTopper(data) {
+      return data.keys().hasAll(['name', 'class', 'percentage', 'image', 'order']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.class is string && data.class.size() <= 20 &&
+             data.percentage is string && data.percentage.size() <= 20 &&
+             data.image is string && data.image.size() <= 1048576 &&
+             data.order is number;
+    }
+
+    function isValidNotice(data) {
+      return data.keys().hasAll(['title', 'content', 'date', 'priority', 'isActive', 'createdAt']) &&
+             data.keys().size() == 6 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 2000 &&
+             data.date is string &&
+             data.priority in ['low', 'medium', 'high'] &&
+             data.isActive is bool &&
+             data.createdAt == request.time;
+    }
+
+    // --- Collections ---
+
+    // Notices collection
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isVerifiedAdmin() && (request.method == 'delete' || (isValidId(noticeId) && isValidNotice(incoming())));
+    }
+
+    // Faculty collection
+    match /faculty/{memberId} {
+      allow read: if true;
+      allow write: if isVerifiedAdmin() && isValidId(memberId) && isValidFacultyMember(incoming());
+    }
+
+    // Toppers collection
+    match /toppers/{topperId} {
+      allow read: if true;
+      allow write: if isVerifiedAdmin() && isValidId(topperId) && isValidTopper(incoming());
+    }
+
+    // Settings collection
+    match /settings/{settingId} {
+      allow read: if isValidId(settingId);
+      allow write: if isVerifiedAdmin() && isValidId(settingId) && isValidSettings(incoming());
+    }
+
+    // Gallery collection
+    match /gallery/{imageId} {
+      allow get: if isValidId(imageId);
+      // Pillar 8: Secure List Queries (Public, but ensure it's filtered safely)
+      allow list: if true; 
+      
+      allow create: if isVerifiedAdmin() && isValidGalleryImage(incoming());
+      
+      allow update: if isVerifiedAdmin() && isValidId(imageId) && 
+                      isValidGalleryUpdate(incoming()) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['url', 'updatedAt']);
+      
+      allow delete: if isVerifiedAdmin() && isValidId(imageId);
+    }
+
+    // Registrations collection
+    match /registrations/{registrationId} {
+      allow create: if isSignedIn() && isValidRegistration(incoming());
+      // Pillar 8: Secure List Queries
+      allow list: if isVerifiedAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
+      allow get: if (isVerifiedAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid)) && isValidId(registrationId);
+      
+      allow update: if isVerifiedAdmin() && isValidId(registrationId) && 
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                      incoming().status in ['pending', 'approved', 'rejected'];
+      
+      allow delete: if isVerifiedAdmin() && isValidId(registrationId);
+    }
+
+    // Messages collection
+    match /messages/{messageId} {
+      allow create: if isValidMessage(incoming());
+      allow list: if isVerifiedAdmin();
+      allow get: if isVerifiedAdmin() && isValidId(messageId);
+      allow update: if isVerifiedAdmin() && isValidId(messageId) && 
+                      incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isVerifiedAdmin() && isValidId(messageId);
+    }
+
+    // Visitors Stats
+    match /stats/{statId} {
+      allow read: if isValidId(statId);
+      allow update: if statId == 'visitors' && 
+                      incoming().count == existing().count + 1 &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['count']);
+    }
+
+    // Users (Private Auth Info)
+    match /users/{userId} {
+      allow get: if (isOwner(userId) || isVerifiedAdmin()) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && 
+                      incoming().userId == request.auth.uid &&
+                      incoming().email == request.auth.token.email;
+      // Partial updates only for role if admin, or profile fields if owner
+      allow update: if (isOwner(userId) || isVerifiedAdmin()) && isValidId(userId) &&
+                      (
+                        (isVerifiedAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role'])) ||
+                        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone']))
+                      );
+    }
+  }
+}
